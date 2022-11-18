@@ -21,12 +21,12 @@ public class PlayAudioPanel : MonoBehaviour
         btnStop.onClick.AddListener(StopAudio);
         btnUnPause.onClick.AddListener(UnpauseAudio);
     }
-    void Start()
+    async void Start()
     {
         CosmosEntry.AudioManager.AudioRegisterSuccess += AudioRegisterSuccess;
         CosmosEntry.AudioManager.AudioRegisterFailure += AudioRegistFailure; ;
         var audioAssetInfo = new AudioAssetInfo("AudioTechHouse", "AudioTechHouse");
-        CosmosEntry.AudioManager.RegistAudioAsync(audioAssetInfo);
+        CosmosEntry.AudioManager.RegisterAudioAsync(audioAssetInfo);
     }
     void AudioRegisterSuccess(AudioRegisterSuccessEventArgs eventArgs)
     {
