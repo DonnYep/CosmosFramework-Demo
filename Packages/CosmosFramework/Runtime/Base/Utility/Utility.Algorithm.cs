@@ -274,6 +274,14 @@ namespace Cosmos
                 return result;
             }
             /// <summary>
+            /// 返回一个0.0~1.0之间的随机数
+            /// </summary>
+            /// <returns>随机数</returns>
+            public static double RandomDouble()
+            {
+                return random.NextDouble();
+            }
+            /// <summary>
             /// 交换两个值
             /// </summary>
             /// <typeparam name="T">传入的对象类型</typeparam>
@@ -366,20 +374,39 @@ namespace Cosmos
             {
                 var length = array.Count;
                 T[] dst = new T[length];
-                T temp = array[0];
                 int idx = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    if (temp.CompareTo(array[i]) != 0)
+                    bool isDuplicate = false;
+                    for (int j = 0; j < i; j++)
                     {
-                        temp = array[i];
-                        dst[idx] = temp;
+                        if (array[i].CompareTo(array[j]) == 0)
+                        {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    if (!isDuplicate)
+                    {
+                        dst[idx] = array[i];
                         idx++;
-                        continue;
                     }
                 }
                 Array.Resize(ref dst, idx);
                 return dst;
+            }
+            /// <summary>
+            /// 产生正态分布的随机数
+            /// </summary>
+            /// <param name="mean">均值</param>
+            /// <param name="stdDev">方差</param>
+            /// <returns>随机数</returns>
+            public static double NextGauss( double mean, double stdDev)
+            {
+                double u1 = 1.0 - random.NextDouble();
+                double u2 = 1.0 - random.NextDouble();
+                double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+                return mean + stdDev * randStdNormal;
             }
         }
     }

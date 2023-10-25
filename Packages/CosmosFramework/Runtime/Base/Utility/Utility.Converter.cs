@@ -8,26 +8,25 @@ namespace Cosmos
     {
         public static class Converter
         {
+            [ThreadStatic]//每个静态类型字段对于每一个线程都是唯一的
             static StringBuilder stringBuilderCache = new StringBuilder(1024);
             /// <summary>
-            ///从UFT-8编码到Base64； 
+            /// 解码base64；
             /// </summary>
-            /// <param name="message">待编码的信息</param>
-            /// <returns>编码后的信息</returns>
-            public static string EnecodeBase64String(string message)
+            /// <param name="context">需要解码的内容</param>
+            /// <returns>解码后的内容</returns>
+            public static string DecodeFromBase64(string context)
             {
-                var msg = Encoding.GetEncoding("utf-8").GetBytes(message);
-                return Convert.ToBase64String(msg);
+                return Encoding.UTF8.GetString(Convert.FromBase64String(context));
             }
             /// <summary>
-            /// 从Base64解码到UTF-8格式
+            /// 编码base64；
             /// </summary>
-            /// <param name="message">待解码的信息</param>
-            /// <returns>解码后的信息</returns>
-            public static string DecodeBase64String(string message)
+            /// <param name="context">需要编码的内容</param>
+            /// <returns>编码后的内容</returns>
+            public static string EncodeToBase64(string context)
             {
-                byte[] bytes = Convert.FromBase64String(message);
-                return Encoding.GetEncoding("utf-8").GetString(bytes);
+                return Convert.ToBase64String(Encoding.UTF8.GetBytes(context));
             }
             public static string ConvertToHexString( string srcData)
             {
@@ -101,7 +100,7 @@ namespace Cosmos
             /// <param name="bytes">byte长度</param>
             /// <param name="decimals">保留的小数长度</param>
             /// <returns>格式化后的单位</returns>
-            public static string FormatBytesSize(long bytes, int decimals = 2)
+            public static string FormatBytes(long bytes, int decimals = 2)
             {
                 string[] suffix = { "Byte", "KB", "MB", "GB", "TB" };
                 int i = 0;

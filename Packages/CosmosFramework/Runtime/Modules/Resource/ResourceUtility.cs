@@ -1,41 +1,50 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Cosmos.Resource
 {
-    public class ResourceUtility
+    public static partial class ResourceUtility
     {
+        public static string Prefix
+        {
+            get
+            {
+                string prefix = string.Empty;
+#if UNITY_IOS||UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+                prefix=@"file://";
+#endif
+                return prefix;
+            }
+        }
         /// <summary>
-        /// 报名过滤
+        /// 包名过滤
         /// </summary>
         /// <param name="bundleName">原始包名</param>
         /// <returns>过滤后的名</returns>
-        public static string BundleNameFilter(string bundleName)
+        public static string FilterName(string bundleName)
         {
-            return bundleName.Replace("\\", "_").Replace("/", "_").Replace(".", "_").ToLower();
+            return bundleName.Replace("\\", "_").Replace("/", "_").Replace(".", "_").Replace(",", "_").Replace(";", "_").ToLower();
         }
         /// <summary>
-        /// 获取文件夹的MD5；
+        /// 生成文件夹的md5
         /// </summary>
-        /// <param name="srcPath">文件夹路径</param>
-        /// <returns>MD5</returns>
-        public static string CreateDirectoryMd5(string srcPath)
+        /// <param name="dirPath">文件夹路径</param>
+        /// <returns>hash</returns>
+        public static string CreateDirectoryMd5(string dirPath)
         {
-            var filePaths = Directory.GetFiles(srcPath, "*", SearchOption.AllDirectories).OrderBy(p => p).ToArray();
-            using (var md5 = MD5.Create())
+            var filePaths = Directory.GetFiles(dirPath, "*", SearchOption.AllDirectories).OrderBy(p => p).ToArray();
+
+            using (var ms = new MemoryStream())
             {
                 foreach (var filePath in filePaths)
                 {
-                    byte[] pathBytes = Encoding.UTF8.GetBytes(filePath);
-                    md5.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
-                    byte[] contentBytes = File.ReadAllBytes(filePath);
-                    md5.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
+                    using (var file = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                    {
+                        file.CopyTo(ms);
+                    }
                 }
-                md5.TransformFinalBlock(new byte[0], 0, 0);
-                return BitConverter.ToString(md5.Hash).Replace("-", "").ToLower();
+                return Utility.Encryption.GenerateMD5(ms.ToArray());
             }
         }
         /// <summary>

@@ -82,6 +82,11 @@ namespace Cosmos.Editor
             EditorGUIUtility.PingObject(obj);
             Selection.activeObject = obj;
         }
+        public static void ActiveObject(string path)
+        {
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            Selection.activeObject = obj;
+        }
         public static void SelectionActiveObject(string path)
         {
             var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
@@ -152,7 +157,7 @@ namespace Cosmos.Editor
         public static string GetAssetFileSize(string assetPath)
         {
             if (!assetPath.StartsWith("Assets"))
-                return "<NULL>";
+                return Constants.NULL;
             var fullPath = Path.Combine(ApplicationPath(), assetPath);
             var len = Utility.IO.GetFileSize(fullPath);
             return EditorUtility.FormatBytes(len);

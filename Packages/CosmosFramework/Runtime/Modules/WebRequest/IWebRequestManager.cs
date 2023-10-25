@@ -37,6 +37,14 @@ namespace Cosmos.WebRequest
         /// </summary>
         event Action<WebRequestFailureEventArgs> OnFailureCallback;
         /// <summary>
+        /// 获取文件长度失败回调；
+        /// </summary>
+        event Action<WebRequestGetContentLengthFailureEventArgs> OnGetContentLengthFailureCallback;
+        /// <summary>
+        /// 获取文件长度成功回调；
+        /// </summary>
+        event Action<WebRequestGetContentLengthSuccessEventArgs> OnGetContentLengthSuccessCallback;
+        /// <summary>
         /// 所有任务完成回调；
         /// </summary>
         event Action<WebRequestAllTaskCompleteEventArgs> OnAllTaskCompleteCallback;
@@ -92,11 +100,23 @@ namespace Cosmos.WebRequest
         /// <returns>任务id</returns>
         long AddDownloadRequestTask(UnityWebRequest webRequest);
         /// <summary>
+        /// 添加获取文件大小的请求；
+        /// </summary>
+        /// <param name="url">地址</param>
+        /// <returns>任务id</returns>
+        long AddGetContentLengthTask(string url);
+        /// <summary>
         /// 移除任务；
         /// </summary>
         /// <param name="taskId">任务id</param>
         /// <returns>移除结果</returns>
         bool RemoveTask(long taskId);
+        /// <summary>
+        /// 是否存在任务；
+        /// </summary>
+        /// <param name="taskId">任务id</param>
+        /// <returns>存在结果</returns>
+        bool HasTask(long taskId);
         /// <summary>
         /// 开始执行请求任务；
         /// </summary>

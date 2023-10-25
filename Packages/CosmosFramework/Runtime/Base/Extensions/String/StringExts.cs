@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Cosmos
 {
@@ -11,6 +14,18 @@ namespace Cosmos
         public static bool Contains(this string @this, string toCheck, StringComparison comp)
         {
             return @this.IndexOf(toCheck, comp) >= 0;
+        }
+        public static bool Contains(this string @this, IEnumerable<string> keys, bool ignoreCase = true)
+        {
+            if (!(keys is ICollection<string> array))
+            {
+                array = keys.ToArray();
+            }
+            if (array.Count == 0 || string.IsNullOrEmpty(@this))
+            {
+                return false;
+            }
+            return ignoreCase ? array.Any(item => @this.IndexOf(item, StringComparison.InvariantCultureIgnoreCase) >= 0) : array.Any(@this.Contains);
         }
         /// <summary>
         /// 是否含有中文
@@ -105,6 +120,13 @@ namespace Cosmos
         public static byte[] ToByteArray(this string @this)
         {
             return Encoding.UTF8.GetBytes(@this);
+        }
+        /// <summary>
+        /// 根据正则替换
+        /// </summary>
+        public static string Replace(this string @this, Regex regex, string replacement)
+        {
+            return regex.Replace(@this, replacement);
         }
     }
 }

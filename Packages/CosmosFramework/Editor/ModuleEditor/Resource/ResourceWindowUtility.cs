@@ -26,13 +26,9 @@ namespace Cosmos.Editor.Resource
             }
             return false;
         }
-        /// <summary>
-        /// 获取原生资产icon
-        /// </summary>
-        /// <returns>icon</returns>
-        public static Texture2D GetAssetIcon()
+        public static Texture2D GetHorizontalLayoutGroupIcon()
         {
-            return EditorGUIUtility.FindTexture("Prefab Icon");
+            return EditorGUIUtility.FindTexture("HorizontalLayoutGroup Icon");
         }
         /// <summary>
         /// 获取原生场景资源icon
@@ -50,17 +46,30 @@ namespace Cosmos.Editor.Resource
         {
             return EditorGUIUtility.FindTexture("Folder Icon");
         }
+        public static Texture2D GetFolderEmptyIcon()
+        {
+            return EditorGUIUtility.FindTexture("FolderEmpty Icon");
+        }
+        public static Texture2D GetFindDependenciesIcon()
+        {
+            return EditorGUIUtility.FindTexture("UnityEditor.FindDependencies");
+        }
         public static Texture2D GetAssetRefreshIcon()
         {
             return EditorGUIUtility.FindTexture("Refresh");
         }
-        public static Texture2D GetAssetInvalidIcon()
+        public static Texture2D GetInvalidIcon()
         {
             return EditorGUIUtility.FindTexture("TestFailed");
         }
-        public static Texture2D GetAssetValidIcon()
+        public static Texture2D GetValidIcon()
         {
             return EditorGUIUtility.FindTexture("TestPassed");
+        }
+        public static Texture2D GetIgnoredcon()
+        {
+            return EditorGUIUtility.FindTexture("TestIgnored");
+            //return EditorGUIUtility.FindTexture("TestNormal");
         }
         public static MultiColumnHeaderState CreateResourceBundleMultiColumnHeader()
         {
@@ -79,7 +88,7 @@ namespace Cosmos.Editor.Resource
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    headerContent = new GUIContent("Amount"),
+                    headerContent = new GUIContent("Count"),
                     headerTextAlignment = TextAlignment.Left,
                     sortingArrowAlignment = TextAlignment.Left,
                     sortedAscending = false,
@@ -90,17 +99,28 @@ namespace Cosmos.Editor.Resource
                 },
                 new MultiColumnHeaderState.Column
                 {
+                    headerContent = new GUIContent("Splittable"),
+                    headerTextAlignment = TextAlignment.Left,
+                    sortingArrowAlignment = TextAlignment.Left,
+                    sortedAscending = false,
+                    minWidth=48,
+                    width=64,
+                    maxWidth=80,
+                    autoResize = false,
+                    canSort=true
+                },
+                new MultiColumnHeaderState.Column
+                {
                     headerContent = new GUIContent("Bundle"),
                     headerTextAlignment = TextAlignment.Left,
                     sortingArrowAlignment = TextAlignment.Left,
                     sortedAscending = false,
                     minWidth=192,
-                    width = 256,
+                    width = 384,
                     maxWidth=1024,
                     autoResize = false,
                     canSort=true
                 }
-
             };
             var state = new MultiColumnHeaderState(columns);
             return state;
@@ -133,13 +153,13 @@ namespace Cosmos.Editor.Resource
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    headerContent = new GUIContent("State"),
+                    headerContent = new GUIContent("Valid"),
                     headerTextAlignment = TextAlignment.Left,
                     sortingArrowAlignment = TextAlignment.Left,
                     sortedAscending = false,
-                    minWidth=64,
-                    width=96,
-                    maxWidth=192,
+                    minWidth=40,
+                    width=40,
+                    maxWidth=40,
                     autoResize = true,
                 },
                 new MultiColumnHeaderState.Column
@@ -159,9 +179,9 @@ namespace Cosmos.Editor.Resource
                     headerTextAlignment = TextAlignment.Left,
                     sortingArrowAlignment = TextAlignment.Left,
                     sortedAscending = false,
-                    minWidth=64,
-                    width=96,
-                    maxWidth=384,
+                    minWidth=128,
+                    width=256,
+                    maxWidth=512,
                     autoResize = true,
                 },
                 new MultiColumnHeaderState.Column
@@ -170,9 +190,9 @@ namespace Cosmos.Editor.Resource
                     headerTextAlignment = TextAlignment.Left,
                     sortingArrowAlignment = TextAlignment.Left,
                     sortedAscending = false,
-                    minWidth=192,
-                    width=768,
-                    maxWidth=1024,
+                    minWidth=256,
+                    width=1024,
+                    maxWidth=1536,
                     autoResize = true,
                 }
             };

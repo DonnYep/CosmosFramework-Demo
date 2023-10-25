@@ -2,6 +2,7 @@
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System;
+using System.Collections.Generic;
 
 namespace Cosmos
 {
@@ -94,11 +95,9 @@ namespace Cosmos
             }
             public static void CreateFolder(string path)
             {
-                var dir = new DirectoryInfo(path);
-                if (!dir.Exists)
+                if (!Directory.Exists(path))
                 {
-                    dir.Create();
-                    Utility.Debug.LogInfo("Path:" + path + "Folder is created");
+                    Directory.CreateDirectory(path);
                 }
             }
             public static void CreateFolder(string path, string folderName)
@@ -182,22 +181,59 @@ namespace Cosmos
                 }
             }
             /// <summary>
-            /// 拷贝文件夹的内容到另一个文件夹；
+            /// 拷贝文件到文件夹；
             /// </summary>
-            /// <param name="sourceDirectory">原始地址</param>
-            /// <param name="targetDirectory">目标地址</param>
-            public static void Copy(string sourceDirectory, string targetDirectory)
+            /// <param name="sourceFileName">文件地址</param>
+            /// <param name="folderPath">文件夹</param>
+            /// <param name="overwrite">是否覆写</param>
+            public static void CopyFileToDirectory(string sourceFileName, string folderPath, bool overwrite = true)
             {
-                DirectoryInfo diSource = new DirectoryInfo(sourceDirectory);
-                DirectoryInfo diTarget = new DirectoryInfo(targetDirectory);
-                CopyAll(diSource, diTarget);
+                if (File.Exists(sourceFileName))
+                {
+                    var fileName = Path.GetDirectoryName(sourceFileName);
+                    if (!Directory.Exists(folderPath))
+                    {
+                        Directory.CreateDirectory(folderPath);
+                    }
+                    var destFileName = Path.Combine(folderPath, fileName);
+                    File.Copy(sourceFileName, destFileName, overwrite);
+                }
+            }
+            /// <summary>
+            /// 拷贝文件到新地址
+            /// </summary>
+            /// <param name="sourceFileName">原文件地址</param>
+            /// <param name="destFileName">目标文件地址</param>
+            /// <param name="overwrite">是否覆写</param>
+            public static void CopyFile(string sourceFileName, string destFileName, bool overwrite = true)
+            {
+                if (File.Exists(sourceFileName))
+                {
+                    var directory = Path.GetDirectoryName(destFileName);
+                    if (!Directory.Exists(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                    File.Copy(sourceFileName, destFileName, overwrite);
+                }
             }
             /// <summary>
             /// 拷贝文件夹的内容到另一个文件夹；
             /// </summary>
             /// <param name="source">原始地址</param>
             /// <param name="target">目标地址</param>
-            public static void CopyAll(DirectoryInfo source, DirectoryInfo target)
+            public static void CopyDirectory(string source, string target)
+            {
+                DirectoryInfo diSource = new DirectoryInfo(source);
+                DirectoryInfo diTarget = new DirectoryInfo(target);
+                CopyDirectoryRecursively(diSource, diTarget);
+            }
+            /// <summary>
+            /// 拷贝所有文件夹的内容到另一个文件夹；
+            /// </summary>
+            /// <param name="source">原始地址</param>
+            /// <param name="target">目标地址</param>
+            public static void CopyDirectoryRecursively(DirectoryInfo source, DirectoryInfo target)
             {
                 Directory.CreateDirectory(target.FullName);
                 //复制所有文件到新地址
@@ -210,14 +246,39 @@ namespace Cosmos
                 {
                     DirectoryInfo nextTargetSubDir =
                         target.CreateSubdirectory(diSourceSubDir.Name);
-                    CopyAll(diSourceSubDir, nextTargetSubDir);
+                    CopyDirectoryRecursively(diSourceSubDir, nextTargetSubDir);
                 }
             }
+            /// <summary>
+            /// 安全删除文件
+            /// </summary>
+            /// <param name="fileFullPath">文件地址</param>
             public static void DeleteFile(string fileFullPath)
             {
                 if (File.Exists(fileFullPath))
                 {
                     File.Delete(fileFullPath);
+                }
+            }
+            /// <summary>
+            /// 通过文件名删除文件夹下的文件。
+            /// 部分操作平台存在使用File.Delete()无法删除文件的情况，此方法能处理此问题。
+            /// </summary>
+            /// <param name="directoryPath">文件夹地址</param>
+            /// <param name="fileNames">文件名集合</param>
+            public static void DeleteDirectoryFiles(string directoryPath, IEnumerable<string> fileNames)
+            {
+                if (!Directory.Exists(directoryPath))
+                    return;
+                if (fileNames == null)
+                    return;
+                var fileNameHash = new HashSet<string>();
+                fileNameHash.AddRange(fileNames);
+                var dirInfo = new DirectoryInfo(directoryPath);
+                var fileInfos = dirInfo.GetFiles();
+                foreach (var fileInfo in fileInfos)
+                {
+                    fileInfo.Delete();
                 }
             }
             /// <summary>
@@ -332,6 +393,9 @@ namespace Cosmos
             /// <param name="context">写入的信息</param>
             public static void AppendWriteTextFile(string fileFullPath, string context)
             {
+                var folderPath = Path.GetDirectoryName(fileFullPath);
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
                 using (FileStream stream = new FileStream(fileFullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     stream.Position = stream.Length;
@@ -378,6 +442,9 @@ namespace Cosmos
             /// <param name="append">是否追加</param>
             public static void WriteTextFile(string fileFullPath, string context, bool append = false)
             {
+                var folderPath = Path.GetDirectoryName(fileFullPath);
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
                 using (FileStream stream = File.Open(fileFullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     if (append)
@@ -494,6 +561,9 @@ namespace Cosmos
             /// <param name="context">写入的信息</param>
             public static void OverwriteTextFile(string fileFullPath, string context)
             {
+                var folderPath = Path.GetDirectoryName(fileFullPath);
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
                 using (FileStream stream = File.Open(fileFullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     stream.Seek(0, SeekOrigin.Begin);
@@ -513,6 +583,9 @@ namespace Cosmos
             /// <returns>是否写入成功</returns>
             public static bool WriterFormattedBinary(string fileFullPath, object context)
             {
+                var folderPath = Path.GetDirectoryName(fileFullPath);
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
                 using (FileStream stream = new FileStream(fileFullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     BinaryFormatter formatter = new BinaryFormatter();
@@ -569,7 +642,7 @@ namespace Cosmos
             }
             /// <summary>
             /// 获取文件大小；
-            /// 若文件存在，则返回正确的大小；若不存在，则返回-1；
+            /// 若文件存在，则返回正确的大小；若不存在，则返回0；
             /// </summary>
             /// <param name="filePath">文件地址</param>
             /// <returns>文件long类型的长度</returns>
@@ -577,13 +650,13 @@ namespace Cosmos
             {
                 if (!Directory.Exists(Path.GetDirectoryName(filePath)))
                 {
-                    return -1;
+                    return 0;
                 }
                 else if (File.Exists(filePath))
                 {
                     return new FileInfo(filePath).Length;
                 }
-                return -1;
+                return 0;
             }
             /// <summary>
             /// 判断是否是二级路径；
@@ -612,18 +685,27 @@ namespace Cosmos
             /// </summary>
             /// <param name="path">路径</param>
             /// <returns>文件夹大小</returns>
-            public static long GetDirectorySize(string path)
+            public static long GetDirectorySize(string path, string searchPattern = ".")
             {
                 if (!Directory.Exists(path))
                     return 0;
                 DirectoryInfo directory = new DirectoryInfo(path);
-                var allFiles = directory.GetFiles();
+                var allFiles = directory.GetFiles(searchPattern, SearchOption.AllDirectories);
                 long totalSize = 0;
                 foreach (var file in allFiles)
                 {
                     totalSize += file.Length;
                 }
                 return totalSize;
+            }
+            /// <summary>
+            /// 清空文件夹
+            /// </summary>
+            /// <param name="path">地址</param>
+            public static void EmptyFolder(string path)
+            {
+                DeleteFolder(path);
+                CreateFolder(path);
             }
         }
     }

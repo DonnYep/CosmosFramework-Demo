@@ -1,8 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System;
-using System.Threading.Tasks;
 using Object = UnityEngine.Object;
+using Cosmos.WebRequest;
+using Cosmos.Resource.State;
+
 namespace Cosmos.Resource
 {
     //================================================
@@ -23,9 +25,30 @@ namespace Cosmos.Resource
         #region Properties
         Dictionary<ResourceLoadMode, ResourceLoadChannel> loadChannelDict;
         IResourceLoadHelper currentLoadHelper;
-        ResourceLoadMode currentResourceLoadMode;
+        ResourceManifestRequester resourceManifestRequester;
+
+        Action<ResourceRequestManifestSuccessEventArgs> resourceRequestManifestSuccess;
+        Action<ResourceRequestManifestFailureEventArgs> resourceRequestManifestFailure;
         /// <inheritdoc/>
-        public ResourceLoadMode ResourceLoadMode { get { return currentResourceLoadMode; } }
+        public event Action<ResourceRequestManifestSuccessEventArgs> ResourceRequestManifestSuccess
+        {
+            add { resourceRequestManifestSuccess += value; }
+            remove { resourceRequestManifestSuccess -= value; }
+        }
+        /// <inheritdoc/>
+        public event Action<ResourceRequestManifestFailureEventArgs> ResourceRequestManifestFailure
+        {
+            add { resourceRequestManifestFailure += value; }
+            remove { resourceRequestManifestFailure -= value; }
+        }
+        /// <inheritdoc/>
+        public ResourceLoadMode ResourceLoadMode { get { return ResourceDataProxy.ResourceLoadMode; } }
+        /// <inheritdoc/>
+        public bool UnloadAllLoadedObjectsWhenBundleUnload
+        {
+            get { return ResourceDataProxy.UnloadAllLoadedObjectsWhenBundleUnload; }
+            set { ResourceDataProxy.UnloadAllLoadedObjectsWhenBundleUnload = value; }
+        }
         #endregion
         #region Methods
         /// <inheritdoc/>
@@ -34,16 +57,19 @@ namespace Cosmos.Resource
             if (loadHelper == null)
                 throw new ArgumentNullException($"IResourceLoadHelper is invalid !");
             var channel = new ResourceLoadChannel(resourceLoadMode, loadHelper);
-            loadChannelDict[resourceLoadMode] = channel;
-            this.currentResourceLoadMode = resourceLoadMode;
+            if (loadChannelDict.TryRemove(resourceLoadMode, out var previouseChannel))
+                previouseChannel.ResourceLoadHelper.OnTerminate();
+            loadChannelDict.Add(resourceLoadMode, channel);
+            ResourceDataProxy.ResourceLoadMode = resourceLoadMode;
             currentLoadHelper = channel.ResourceLoadHelper;
+            currentLoadHelper.OnInitialize();
         }
         /// <inheritdoc/>
         public void SwitchLoadMode(ResourceLoadMode resourceLoadMode)
         {
             if (loadChannelDict.TryGetValue(resourceLoadMode, out var channel))
             {
-                this.currentResourceLoadMode = resourceLoadMode;
+                ResourceDataProxy.ResourceLoadMode = resourceLoadMode;
                 currentLoadHelper = channel.ResourceLoadHelper;
             }
             else
@@ -52,13 +78,33 @@ namespace Cosmos.Resource
             }
         }
         /// <inheritdoc/>
+        public void ResetLoadHeper(ResourceLoadMode resourceLoadMode)
+        {
+            if (loadChannelDict.TryRemove(resourceLoadMode, out var channel))
+                channel.ResourceLoadHelper.Reset();
+        }
+        /// <inheritdoc/>
         public void AddOrUpdateLoadHelper(ResourceLoadMode resourceLoadMode, IResourceLoadHelper loadHelper)
         {
             if (Utility.Assert.IsNull(loadHelper))
                 throw new ArgumentNullException($"IResourceLoadHelper is invalid !");
-            loadChannelDict[resourceLoadMode] = new ResourceLoadChannel(resourceLoadMode, loadHelper);
-            if (currentResourceLoadMode == resourceLoadMode)
+            if (loadChannelDict.TryRemove(resourceLoadMode, out var previouseChannel))
+                previouseChannel.ResourceLoadHelper.OnTerminate();
+            var newChannel = new ResourceLoadChannel(resourceLoadMode, loadHelper);
+            loadChannelDict.Add(resourceLoadMode, newChannel);
+            newChannel.ResourceLoadHelper.OnInitialize();
+            if (ResourceDataProxy.ResourceLoadMode == resourceLoadMode)
                 currentLoadHelper = loadHelper;
+        }
+        /// <inheritdoc/>
+        public void StartRequestManifest(string manifestPath, string manifestEncryptionKey)
+        {
+            resourceManifestRequester.StartRequestManifest(manifestPath, manifestEncryptionKey);
+        }
+        /// <inheritdoc/>
+        public void StopRequestManifest()
+        {
+            resourceManifestRequester.StopRequestManifest();
         }
         /// <inheritdoc/>
         public Coroutine LoadAssetAsync<T>(string assetName, Action<T> callback, Action<float> progress = null)
@@ -113,59 +159,6 @@ namespace Cosmos.Resource
             return currentLoadHelper.UnloadSceneAsync(info, progress, condition, callback);
         }
         /// <inheritdoc/>
-        public async Task<T> LoadAssetAsync<T>(string assetName)
-            where T : Object
-        {
-            T asset = null;
-            await currentLoadHelper.LoadAssetAsync<T>(assetName, a => asset = a, null);
-            return asset;
-        }
-        /// <inheritdoc/>
-        public async Task<Object> LoadAssetAsync(string assetName, Type type)
-        {
-            Object asset = null;
-            await currentLoadHelper.LoadAssetAsync(assetName, type, a => asset = a, null);
-            return asset;
-        }
-        /// <inheritdoc/>
-        public async Task<GameObject> LoadPrefabAsync(string assetName, bool instantiate = false)
-        {
-            GameObject go = null;
-            await currentLoadHelper.LoadAssetAsync<GameObject>(assetName, (asset) =>
-            {
-                if (instantiate)
-                {
-                    if (asset != null)
-                        go = GameObject.Instantiate(asset);
-                }
-                else
-                    go = asset;
-            }, null);
-            return go;
-        }
-        /// <inheritdoc/>
-        public async Task<Object[]> LoadAllAssetAsync(string assetPack, Action<float> progress = null)
-        {
-            Object[] assets = null;
-            await currentLoadHelper.LoadAllAssetAsync(assetPack, (a) => { assets = a; }, progress);
-            return assets;
-        }
-        /// <inheritdoc/>
-        public async Task LoadSceneAsync(SceneAssetInfo info)
-        {
-            await currentLoadHelper.LoadSceneAsync(info, null, null, null, null);
-        }
-        /// <inheritdoc/>
-        public async Task LoadSceneAsync(SceneAssetInfo info, Func<float> progressProvider, Action<float> progress, Func<bool> condition)
-        {
-            await currentLoadHelper.LoadSceneAsync(info, progressProvider, progress, condition, null);
-        }
-        /// <inheritdoc/>
-        public async Task UnloadSceneAsync(SceneAssetInfo info, Action<float> progress, Func<bool> condition)
-        {
-            await currentLoadHelper.UnloadSceneAsync(info, progress, condition, null);
-        }
-        /// <inheritdoc/>
         public void UnloadAsset(string assetName)
         {
             currentLoadHelper.UnloadAsset(assetName);
@@ -179,18 +172,55 @@ namespace Cosmos.Resource
             }
         }
         /// <inheritdoc/>
-        public void ReleaseAssetBundle(string assetBundleName, bool unloadAllLoadedObjects = false)
+        public void UnloadAllAsset(bool unloadAllLoadedObjects)
         {
-            currentLoadHelper.ReleaseAssetBundle(assetBundleName, unloadAllLoadedObjects);
+            currentLoadHelper.UnloadAllAsset(unloadAllLoadedObjects);
         }
         /// <inheritdoc/>
-        public void ReleaseAllAsset(bool unloadAllLoadedObjects = false)
+        public void UnloadAssetBundle(string assetBundleName, bool unloadAllLoadedObjects)
         {
-            currentLoadHelper.ReleaseAllAsset(unloadAllLoadedObjects);
+            currentLoadHelper.UnloadAssetBundle(assetBundleName, unloadAllLoadedObjects);
+        }
+        /// <inheritdoc/>
+        public bool GetBundleState(string bundleName, out ResourceBundleState bundleState)
+        {
+            return currentLoadHelper.GetBundleState(bundleName, out bundleState);
+        }
+        /// <inheritdoc/>
+        public bool GetObjectState(string objectName, out ResourceObjectState objectState)
+        {
+            return currentLoadHelper.GetObjectState(objectName, out objectState);
+        }
+        /// <inheritdoc/>
+        public ResourceVersion GetResourceVersion()
+        {
+            return currentLoadHelper.GetResourceVersion();
         }
         protected override void OnInitialization()
         {
             loadChannelDict = new Dictionary<ResourceLoadMode, ResourceLoadChannel>();
+        }
+        protected override void OnPreparatory()
+        {
+            var webRequestManager = GameManager.GetModule<IWebRequestManager>();
+            resourceManifestRequester = new ResourceManifestRequester(webRequestManager, OnRequestManifestSuccess, OnRequestManifestFailure);
+            resourceManifestRequester.OnInitialize();
+        }
+        protected override void OnTermination()
+        {
+            resourceManifestRequester.OnTerminate();
+        }
+        void OnRequestManifestSuccess(string manifestPath, ResourceManifest resourceManifest)
+        {
+            var eventArgs = ResourceRequestManifestSuccessEventArgs.Create(manifestPath, ResourceLoadMode, ResourceDataProxy.ResourceBundlePathType, resourceManifest);
+            resourceRequestManifestSuccess?.Invoke(eventArgs);
+            ResourceRequestManifestSuccessEventArgs.Release(eventArgs);
+        }
+        void OnRequestManifestFailure(string manifestPath, string errorMessage)
+        {
+            var eventArgs = ResourceRequestManifestFailureEventArgs.Create(manifestPath, ResourceLoadMode, ResourceDataProxy.ResourceBundlePathType, errorMessage);
+            resourceRequestManifestFailure?.Invoke(eventArgs);
+            ResourceRequestManifestFailureEventArgs.Release(eventArgs);
         }
         #endregion
     }

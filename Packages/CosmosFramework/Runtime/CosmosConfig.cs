@@ -5,7 +5,7 @@ using System;
 
 namespace Cosmos
 {
-    [DefaultExecutionOrder(2000)]
+    [DisallowMultipleComponent]
     public class CosmosConfig : MonoBehaviour
     {
         [SerializeField] bool launchAppDomainModules = true;
@@ -13,6 +13,7 @@ namespace Cosmos
         [SerializeField] ResourceLoadMode resourceLoadMode;
         [SerializeField] string resourceLoaderName;
         [SerializeField] int resourceLoaderIndex;
+        [SerializeField] bool printLogWhenAssetNotExists;
 
         [SerializeField] int debugHelperIndex;
         [SerializeField] int jsonHelperIndex;
@@ -27,38 +28,84 @@ namespace Cosmos
         [SerializeField] ResourceDataset resourceDataset;
         [SerializeField] ResourceBundlePathType resourceBundlePathType;
         [SerializeField] string relativeBundlePath;
-        [SerializeField] string customeResourceBundlePath;
 
         [SerializeField] bool assetBundleEncrytion = false;
         [SerializeField] ulong assetBundleEncrytionOffset = 16;
 
-        [SerializeField] bool buildInfoEncrytion = false;
-        [SerializeField] string buildInfoEncrytionKey = "CosmosBundlesKey";
+        [SerializeField] bool manifestEncrytion = false;
+        [SerializeField] string manifestEncrytionKey = "CosmosBundlesKey";
 
-        public const string NONE = "<NONE>";
-        /// <summary>
-        /// AB包所在位置；
-        /// </summary>
-        public string RelativeBundlePath
+        [SerializeField] bool drawDebugWindow;
+
+        [SerializeField] int inputHelperIndex;
+        [SerializeField] string inputHelperName;
+
+        [SerializeField] bool moduleConfigFoldout;
+        public void LoadResource()
         {
-            get { return relativeBundlePath; }
-            set { relativeBundlePath = value; }
-        }
-        /// <summary>
-        /// AB包所在位置的路径类型；
-        /// </summary>
-        public ResourceBundlePathType ResourceBundlePathType
-        {
-            get { return resourceBundlePathType; }
-            set { resourceBundlePathType = value; }
-        }
-        /// <summary>
-        /// 自定义AB地址
-        /// </summary>
-        public string CustomeResourceBundlePath
-        {
-            get { return customeResourceBundlePath; }
-            set { customeResourceBundlePath = value; }
+            ResourceDataProxy.PrintLogWhenAssetNotExists = printLogWhenAssetNotExists;
+            switch (resourceLoadMode)
+            {
+                case ResourceLoadMode.Resource:
+                    CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, new ResourcesLoader());
+                    break;
+                case ResourceLoadMode.AssetBundle:
+                    {
+                        string manifestPath = string.Empty;
+                        string bundlePath = string.Empty;
+                        string prefix = ResourceUtility.Prefix;
+                        switch (resourceBundlePathType)
+                        {
+                            case ResourceBundlePathType.StreamingAssets:
+                                bundlePath = Application.streamingAssetsPath;
+                                break;
+                            case ResourceBundlePathType.PersistentDataPath:
+                                bundlePath = Application.persistentDataPath;
+                                break;
+                        }
+                        ResourceDataProxy.ResourceBundlePathType = resourceBundlePathType;
+                        if (!string.IsNullOrEmpty(relativeBundlePath))
+                        {
+                            manifestPath = Path.Combine(bundlePath, relativeBundlePath, ResourceConstants.RESOURCE_MANIFEST);
+                            ResourceDataProxy.BundlePath = Path.Combine(bundlePath, relativeBundlePath);
+                        }
+                        else
+                        {
+                            manifestPath = Path.Combine(bundlePath, ResourceConstants.RESOURCE_MANIFEST);
+                            ResourceDataProxy.BundlePath = bundlePath;
+                        }
+                        manifestPath = prefix + manifestPath;
+                        //webrequest需要加file://，System.IO不需要加。加载器使用的是unity原生的assetbundle.loadxxxx，属于IO，因此无需加前缀；
+                        if (assetBundleEncrytion)
+                            ResourceDataProxy.BundleEncryptionOffset = assetBundleEncrytionOffset;
+                        else
+                            ResourceDataProxy.BundleEncryptionOffset = 0;
+                        if (manifestEncrytion)
+                            ResourceDataProxy.ManifestEncryptionKey = manifestEncrytionKey;
+                        else
+                            ResourceDataProxy.ManifestEncryptionKey = string.Empty;
+                        var assetBundleLoader = new AssetBundleLoader();
+                        CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, assetBundleLoader);
+                        CosmosEntry.ResourceManager.StartRequestManifest(manifestPath, ResourceDataProxy.ManifestEncryptionKey);
+                    }
+                    break;
+                case ResourceLoadMode.AssetDatabase:
+                    var assetDatabaseLoader = new AssetDatabaseLoader();
+                    assetDatabaseLoader.SetResourceDataset(resourceDataset);
+                    CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, assetDatabaseLoader);
+                    break;
+                case ResourceLoadMode.CustomLoader:
+                    {
+                        if (string.IsNullOrEmpty(resourceLoaderName) || resourceLoaderName == Constants.NONE)
+                        {
+                            throw new Exception("CustomLoader is invalid !");
+                        }
+                        var loadHelper = Utility.Assembly.GetTypeInstance(resourceLoaderName);
+                        if (loadHelper != null)
+                            CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, (IResourceLoadHelper)loadHelper);
+                    }
+                    break;
+            }
         }
         protected virtual void Awake()
         {
@@ -68,88 +115,38 @@ namespace Cosmos
             if (launchAppDomainModules)
             {
                 CosmosEntry.LaunchAppDomainModules();
-                switch (resourceLoadMode)
-                {
-                    case ResourceLoadMode.Resource:
-                        CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, new ResourcesLoader());
-                        break;
-                    case ResourceLoadMode.AssetBundle:
-                        {
-                            string manifestPath = string.Empty;
-                            string bundlePath = string.Empty;
-                            string prefix = string.Empty;
-#if UNITY_EDITOR || UNITY_ANDROID || UNITY_STANDALONE
-#elif UNITY_IOS && !UNITY_EDITOR
-                        prefix=@"file://";
-#endif
-                            switch (resourceBundlePathType)
-                            {
-                                case ResourceBundlePathType.StreamingAssets:
-                                    bundlePath = Application.streamingAssetsPath;
-                                    break;
-                                case ResourceBundlePathType.PersistentDataPath:
-                                    bundlePath = Application.persistentDataPath;
-                                    break;
-                            }
-                            if (!string.IsNullOrEmpty(relativeBundlePath))
-                            {
-                                manifestPath = Path.Combine(bundlePath, relativeBundlePath, ResourceConstants.RESOURCE_MANIFEST);
-                                ResourceDataProxy.BundlePath = Path.Combine(bundlePath, relativeBundlePath);
-                            }
-                            else
-                            {
-                                manifestPath = Path.Combine(bundlePath, ResourceConstants.RESOURCE_MANIFEST);
-                                ResourceDataProxy.BundlePath = bundlePath;
-                            }
-                            manifestPath = prefix + manifestPath;
-                            ResourceDataProxy.BundlePath = prefix + ResourceDataProxy.BundlePath;
-                            if (assetBundleEncrytion)
-                                ResourceDataProxy.EncryptionOffset = assetBundleEncrytionOffset;
-                            if (buildInfoEncrytion)
-                                ResourceDataProxy.BuildInfoEncryptionKey = buildInfoEncrytionKey;
-                            var assetBundleLoader = new AssetBundleLoader();
-                            assetBundleLoader.InitLoader(CosmosEntry.WebRequestManager, manifestPath);
-                            CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, assetBundleLoader);
-                        }
-                        break;
-                    case ResourceLoadMode.AssetDatabase:
-                        var assetDatabaseLoader = new AssetDatabaseLoader();
-                        assetDatabaseLoader.InitLoader(resourceDataset);
-                        CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, assetDatabaseLoader);
-                        break;
-                    case ResourceLoadMode.CustomLoader:
-                        {
-                            if (string.IsNullOrEmpty(resourceLoaderName) || resourceLoaderName == NONE)
-                            {
-                                throw new Exception("CustomLoader is invalid !");
-                            }
-                            var loadHelper = Utility.Assembly.GetTypeInstance(resourceLoaderName);
-                            if (loadHelper != null)
-                                CosmosEntry.ResourceManager.SetDefaultLoadHeper(resourceLoadMode, (IResourceLoadHelper)loadHelper);
-                        }
-                        break;
-                }
+                LoadResource();
+                SetInputHelper();
             }
         }
         void LoadHelpers()
         {
-            if (!string.IsNullOrEmpty(debugHelperName) && debugHelperName != NONE)
+            if (!string.IsNullOrEmpty(debugHelperName) && debugHelperName != Constants.NONE)
             {
                 var debugHelper = Utility.Assembly.GetTypeInstance(debugHelperName);
                 if (debugHelper != null)
                     Utility.Debug.SetHelper((Utility.Debug.IDebugHelper)debugHelper);
             }
-            if (!string.IsNullOrEmpty(jsonHelperName) && jsonHelperName != NONE)
+            if (!string.IsNullOrEmpty(jsonHelperName) && jsonHelperName != Constants.NONE)
             {
                 var jsonHelper = Utility.Assembly.GetTypeInstance(jsonHelperName);
                 if (jsonHelper != null)
                     Utility.Json.SetHelper((Utility.Json.IJsonHelper)jsonHelper);
             }
-            if (!string.IsNullOrEmpty(messagePackHelperName) && messagePackHelperName != NONE)
+            if (!string.IsNullOrEmpty(messagePackHelperName) && messagePackHelperName != Constants.NONE)
             {
                 var messagePackHelper = Utility.Assembly.GetTypeInstance(messagePackHelperName);
                 if (messagePackHelper != null)
                     Utility.MessagePack.SetHelper((Utility.MessagePack.IMessagePackHelper)messagePackHelper);
+            }
+        }
+        void SetInputHelper()
+        {
+            if (!string.IsNullOrEmpty(inputHelperName) && inputHelperName != Constants.NONE)
+            {
+                var inputHelper = Utility.Assembly.GetTypeInstance<Cosmos.Input.IInputHelper>(inputHelperName);
+                if (inputHelper != null)
+                    CosmosEntry.InputManager.SetInputHelper(inputHelper);
             }
         }
     }

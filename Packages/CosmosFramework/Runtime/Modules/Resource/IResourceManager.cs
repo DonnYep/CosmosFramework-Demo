@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Cosmos.Resource.State;
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -21,9 +21,21 @@ namespace Cosmos.Resource
     public interface IResourceManager : IModuleManager, IModuleInstance
     {
         /// <summary>
+        /// 当资源包被卸载时一同卸载已经被加载的资源；
+        /// </summary>
+        bool UnloadAllLoadedObjectsWhenBundleUnload { get; set; }
+        /// <summary>
         /// 当前资源的加载模式；
         /// </summary>
         ResourceLoadMode ResourceLoadMode { get; }
+        /// <summary>
+        /// 请求资源文件清单成功事件；
+        /// </summary>
+        event Action<ResourceRequestManifestSuccessEventArgs> ResourceRequestManifestSuccess;
+        /// <summary>
+        /// 请求资源文件清单失败事件；
+        /// </summary>
+        event Action<ResourceRequestManifestFailureEventArgs> ResourceRequestManifestFailure;
         #region Methods
         /// <summary>
         /// 设置默认的加载方式；
@@ -37,11 +49,26 @@ namespace Cosmos.Resource
         /// <param name="resourceLoadMode">加载模式</param>
         void SwitchLoadMode(ResourceLoadMode resourceLoadMode);
         /// <summary>
+        /// 重置加载器；
+        /// </summary>
+        /// <param name="resourceLoadMode">加载模式</param>
+        void ResetLoadHeper(ResourceLoadMode resourceLoadMode);
+        /// <summary>
         /// 添加者更新替换内置的加载帮助体；
         /// </summary>
         /// <param name="resourceLoadMode">加载模式</param>
         /// <param name="loadHelper">加载帮助对象</param>
         void AddOrUpdateLoadHelper(ResourceLoadMode resourceLoadMode, IResourceLoadHelper loadHelper);
+        /// <summary>
+        /// 请求文件清单；
+        /// </summary>
+        /// <param name="manifestPath">文件清单地址</param>
+        /// <param name="manifestEncryptionKey">文件解密密钥 [NULLABLE] </param>
+        void StartRequestManifest(string manifestPath, string manifestEncryptionKey);
+        /// <summary>
+        /// 停止请求文件清单；
+        /// </summary>
+        void StopRequestManifest();
         /// <summary>
         /// 加载资源（异步），增加一个引用计数；
         /// </summary>
@@ -117,69 +144,6 @@ namespace Cosmos.Resource
         /// <returns>协程对象</returns>
         Coroutine UnloadSceneAsync(SceneAssetInfo info, Action<float> progress, Func<bool> condition, Action callback);
         /// <summary>
-        /// 加载资源（异步），增加一个引用计数；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <typeparam name="T">资源类型</typeparam>
-        /// <param name="assetName">资源信息</param>
-        /// <returns>加载task</returns>
-        Task<T> LoadAssetAsync<T>(string assetName) where T : Object;
-        /// <summary>
-        /// 加载资源（异步），增加一个引用计数；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <param name="assetName">资源信息</param>
-        /// <param name="type">资源类型</param>
-        /// <returns>加载task</returns>
-        Task<Object> LoadAssetAsync(string assetName, Type type);
-        /// <summary>
-        ///  加载资源（异步），增加一个引用计数；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <param name="assetName">资源信息</param>
-        /// <param name="instantiate">是否实例化对象</param>
-        /// <returns>加载task</returns>
-        Task<GameObject> LoadPrefabAsync(string assetName, bool instantiate = false);
-        /// <summary>
-        ///  加载资源包种的所有资源（异步），增加一个引用计数；
-        /// </summary>
-        /// <param name="assetBundleName">资源包</param>
-        /// <param name="progress">加载中事件</param>
-        /// <returns>加载task</returns>
-        Task<Object[]> LoadAllAssetAsync(string assetBundleName, Action<float> progress = null);
-        /// <summary>
-        /// 加载场景（异步）；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <param name="info">资源信息</param>
-        /// <returns>Task异步任务</returns>
-        Task LoadSceneAsync(SceneAssetInfo info);
-        /// <summary>
-        /// 加载场景（异步），增加一个引用计数；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <param name="info">资源信息</param>
-        /// <param name="progressProvider">自定义的加载进度0-1</param>
-        /// <param name="progress">加载场景进度回调</param>
-        /// <param name="condition">加载场景完成的条件</param>
-        /// <returns>Task异步任务</returns>
-        Task LoadSceneAsync(SceneAssetInfo info, Func<float> progressProvider, Action<float> progress, Func<bool> condition);
-        /// <summary>
-        /// 卸载场景（异步），增加一个引用计数；
-        /// 须使用await获取结果；
-        /// aysnc/await机制是使用状态机切换上下文。使用Task.Result会阻塞当前线程导致aysnc/await无法切换回线程上下文，引发锁死；
-        /// </summary>
-        /// <param name="info">资源信息</param>
-        /// <param name="progress">卸载场景的进度</param>
-        /// <param name="condition">卸载场景完成的条件</param>
-        /// <returns>Task异步任务</returns>
-        Task UnloadSceneAsync(SceneAssetInfo info, Action<float> progress, Func<bool> condition);
-        /// <summary>
         /// 卸载资源（同步），减少一个引用计数；
         /// </summary>
         /// <param name="assetName">资源名</param>
@@ -190,16 +154,35 @@ namespace Cosmos.Resource
         /// <param name="assetNames">资源名合集</param>
         void UnloadAssets(IEnumerable<string> assetNames);
         /// <summary>
+        /// 释放所有资源（同步），引用计数归零;
+        /// </summary>
+        /// <param name="unloadAllLoadedObjects">是否同时卸载所有实体对象</param>
+        void UnloadAllAsset(bool unloadAllLoadedObjects);
+        /// <summary>
         /// 释放资源包（同步），引用计数归零；
         /// </summary>
         /// <param name="assetBundleName">资源包名</param>
         /// <param name="unloadAllLoadedObjects">是否同时卸载所有实体对象</param>
-        void ReleaseAssetBundle(string assetBundleName, bool unloadAllLoadedObjects = false);
+        void UnloadAssetBundle(string assetBundleName, bool unloadAllLoadedObjects );
         /// <summary>
-        /// 释放所有资源（同步），引用计数归零;
+        /// 获取bundle状态信息；
         /// </summary>
-        /// <param name="unloadAllLoadedObjects">是否同时卸载所有实体对象</param>
-        void ReleaseAllAsset(bool unloadAllLoadedObjects = false);
+        /// <param name="bundleName">资源包名</param>
+        /// <param name="bundleState">资源包状态</param>
+        /// <returns>是否存在</returns>
+        bool GetBundleState(string bundleName, out ResourceBundleState bundleState);
+        /// <summary>
+        /// 获取object信息；
+        /// </summary>
+        /// <param name="objectName">资源对象名</param>
+        /// <param name="objectState">资源对象状态</param>
+        /// <returns>是否存在</returns>
+        bool GetObjectState(string objectName, out ResourceObjectState objectState);
+        /// <summary>
+        /// Get version of resource.
+        /// </summary>
+        /// <returns>resource version</returns>
+        ResourceVersion GetResourceVersion();
         #endregion
     }
 }

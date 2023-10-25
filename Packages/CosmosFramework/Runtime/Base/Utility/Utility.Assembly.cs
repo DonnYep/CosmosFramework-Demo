@@ -9,12 +9,38 @@ namespace Cosmos
     {
         public static class Assembly
         {
-            static readonly System.Reflection.Assembly[] domainAssemblies;
+            /// <summary>
+            /// 默认使用应用的程序集，若使用了Assembly.Load，则需要更新域程序集；
+            /// </summary>
+            static System.Reflection.Assembly[] domainAssemblies;
             static Assembly()
             {
                 domainAssemblies = AppDomain.CurrentDomain.GetAssemblies();
             }
-
+            /// <summary>
+            /// 设置域程序集
+            /// </summary>
+            /// <param name="assemblies">程序集</param>
+            public static void SetDomainAssemblies(System.Reflection.Assembly[] assemblies)
+            {
+                domainAssemblies = assemblies;
+            }
+            /// <summary>
+            /// 从域程序集中获取类；
+            /// </summary>
+            /// <param name="typeName">类型完全限定名</param>
+            /// <returns>类型</returns>
+            public static Type GetType(string typeName)
+            {
+                Type type = null;
+                foreach (var assembly in domainAssemblies)
+                {
+                    type = assembly.GetType(typeName);
+                    if (type != null)
+                        break;
+                }
+                return type;
+            }
             /// <summary>
             /// 获取AppDomain中指定的程序集
             /// </summary>
@@ -31,17 +57,17 @@ namespace Cosmos
             }
             /// <summary>
             /// 反射工具，得到反射类的对象；
-            /// 不可反射Mono子类，被反射对象必须是具有无参公共构造
             /// </summary>
             /// <param name="type">类型</param>
+            /// <param name="args">构造参数</param>
             /// <returns>实例化后的对象</returns>
-            public static object GetTypeInstance(Type type)
+            public static object GetTypeInstance(Type type, params object[] args)
             {
-                return Activator.CreateInstance(type);
+                return Activator.CreateInstance(type, args);
             }
             /// <summary>
             /// 反射工具，得到反射类的对象；
-            /// 不可反射Mono子类，被反射对象必须是具有无参公共构造 
+            /// 被反射对象必须是具有无参公共构造 
             /// </summary>
             /// <param name="typeName">类型名</param>
             /// <returns>实例化后的对象</returns>
@@ -61,7 +87,48 @@ namespace Cosmos
             }
             /// <summary>
             /// 反射工具，得到反射类的对象；
-            /// 不可反射Mono子类，被反射对象必须是具有无参公共构造 
+            /// </summary>
+            /// <param name="typeName">类型名</param>
+            /// <param name="args">构造参数</param>
+            /// <returns>实例化后的对象</returns>
+            public static object GetTypeInstance(string typeName, object[] args)
+            {
+                object inst = null;
+                foreach (var a in domainAssemblies)
+                {
+                    var dstType = a.GetType(typeName);
+                    if (dstType != null)
+                    {
+                        inst = Activator.CreateInstance(dstType, args);
+                        break;
+                    }
+                }
+                return inst;
+            }
+            /// <summary>
+            /// 反射工具，得到反射类的对象；
+            /// 被反射对象必须是具有无参公共构造 ，强转至泛型类型。
+            /// </summary>
+            /// <typeparam name="T">类型</typeparam>
+            /// <param name="typeName">类型名</param>
+            /// <returns>实例化后的对象</returns>
+            public static T GetTypeInstance<T>(string typeName)
+            {
+                T inst = default;
+                foreach (var a in domainAssemblies)
+                {
+                    var dstType = a.GetType(typeName);
+                    if (dstType != null)
+                    {
+                        inst = (T)Activator.CreateInstance(dstType);
+                        break;
+                    }
+                }
+                return inst;
+            }
+            /// <summary>
+            /// 反射工具，得到反射类的对象；
+            /// 被反射对象必须是具有无参公共构造 
             /// </summary>
             /// <param name="typeName">类型名</param>
             /// <param name="assemblies">程序集集合</param>
@@ -75,6 +142,27 @@ namespace Cosmos
                     if (dstType != null)
                     {
                         inst = Activator.CreateInstance(dstType);
+                        break;
+                    }
+                }
+                return inst;
+            }
+            /// <summary>
+            /// 反射工具，得到反射类的对象；
+            /// </summary>
+            /// <param name="typeName">类型名</param>
+            /// <param name="args">构造参数</param>
+            /// <param name="assemblies">程序集集合</param>
+            /// <returns>实例化后的对象</returns>
+            public static object GetTypeInstance(string typeName, object[] args, params System.Reflection.Assembly[] assemblies)
+            {
+                object inst = null;
+                foreach (var a in assemblies)
+                {
+                    var dstType = a.GetType(typeName);
+                    if (dstType != null)
+                    {
+                        inst = Activator.CreateInstance(dstType, args);
                         break;
                     }
                 }
@@ -892,6 +980,30 @@ where K : class
                 if (property == null)
                     throw new NullReferenceException($"Type : {type} can not find property: {propertyName} !");
                 return property.GetValue(obj);
+            }
+            /// <summary>
+            /// 获取非实例对象属性
+            /// </summary>
+            /// <param name="type">类型</param>
+            /// <param name="propertyName">属性名</param>
+            /// <returns>属性值</returns>
+            public static object GetNonInstancePropertyValue(Type type, string propertyName)
+            {
+                var property = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
+                return property.GetValue(propertyName);
+            }
+            /// <summary>
+            /// 获取属性
+            /// </summary>
+            /// <param name="type">类型</param>
+            /// <param name="propertyName">属性名</param>
+            /// <returns>属性信息</returns>
+            public static PropertyInfo GetProperty(Type type, string propertyName)
+            {
+                var property = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic);
+                if (property == null)
+                    throw new NullReferenceException($"Type : {type} can not find property: {propertyName} !");
+                return property;
             }
             /// <summary>
             /// 获取对象字段值;

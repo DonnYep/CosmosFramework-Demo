@@ -21,6 +21,7 @@ namespace Cosmos.WebRequest
     internal class WebRequestManager : Module, IWebRequestManager
     {
         WebRequester webRequester = new WebRequester();
+
         ///<inheritdoc/>
         public int TaskCount { get { return webRequester.TaskCount; } }
         ///<inheritdoc/>
@@ -46,6 +47,18 @@ namespace Cosmos.WebRequest
         {
             add { webRequester.onFailureCallback += value; }
             remove { webRequester.onFailureCallback -= value; }
+        }
+        ///<inheritdoc/>
+        public event Action<WebRequestGetContentLengthFailureEventArgs> OnGetContentLengthFailureCallback
+        {
+            add { webRequester.onGetContentLengthFailureCallback += value; }
+            remove { webRequester.onGetContentLengthFailureCallback -= value;}
+        }
+        ///<inheritdoc/>
+        public event Action<WebRequestGetContentLengthSuccessEventArgs> OnGetContentLengthSuccessCallback
+        {
+            add { webRequester.onGetContentLengthSuccessCallback+= value; }
+            remove { webRequester.onGetContentLengthSuccessCallback -= value; }
         }
         ///<inheritdoc/>
         public event Action<WebRequestAllTaskCompleteEventArgs> OnAllTaskCompleteCallback
@@ -115,9 +128,22 @@ namespace Cosmos.WebRequest
             return task.TaskId;
         }
         /// <inheritdoc/>
+        public long AddGetContentLengthTask(string url)
+        {
+            var task = WebRequestTask.Create(url, null, WebRequestType.ContentLength);
+            webRequester.AddTask(task);
+            StartRequestTasks();
+            return task.TaskId;
+        }
+        /// <inheritdoc/>
         public bool RemoveTask(long taskId)
         {
             return webRequester.RemoveTask(taskId);
+        }
+        /// <inheritdoc/>
+        public bool HasTask(long taskId)
+        {
+            return webRequester.HasTask(taskId);
         }
         /// <inheritdoc/>
         public void StartRequestTasks()

@@ -6,8 +6,9 @@ namespace Cosmos.Editor.Resource
     [Serializable]
     public class AssetDatabaseTabData
     {
-        List<int> selectedBundleIds;
+        public int LabelTabIndex;
 
+        List<int> selectedBundleIds;
         /// <summary>
         /// 当前被选择的bundleId集合
         /// </summary>

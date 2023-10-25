@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cosmos.Resource.State;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,6 +25,9 @@ namespace Cosmos.Resource
         {
             loadSceneList = new List<string>();
             loadedSceneDict = new Dictionary<string, UnityEngine.SceneManagement.Scene>();
+        }
+        public void OnInitialize()
+        {
             SceneManager.sceneUnloaded += OnSceneUnloaded;
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
@@ -81,16 +85,39 @@ namespace Cosmos.Resource
         {
         }
         ///<inheritdoc/> 
-        public void ReleaseAssetBundle(string assetBundleName, bool unloadAllLoadedObjects = false)
+        public void UnloadAssetBundle(string assetBundleName, bool unloadAllLoadedObjects)
         {
         }
         ///<inheritdoc/> 
-        public void ReleaseAllAsset(bool unloadAllLoadedObjects = false)
+        public void UnloadAllAsset(bool unloadAllLoadedObjects)
         {
             Resources.UnloadUnusedAssets();
         }
         ///<inheritdoc/> 
-        public void Dispose()
+        public bool GetBundleState(string bundleName, out ResourceBundleState bundleState)
+        {
+            bundleState = ResourceBundleState.Default;
+            return false;
+        }
+        ///<inheritdoc/> 
+        public bool GetObjectState(string objectName, out ResourceObjectState objectState)
+        {
+            objectState = ResourceObjectState.Default;
+            return false;
+        }
+        ///<inheritdoc/> 
+        public ResourceVersion GetResourceVersion()
+        {
+            return new ResourceVersion("Built-in_Resources", "Unity Built-in Resources");
+        }
+        ///<inheritdoc/> 
+        public void Reset()
+        {
+            loadSceneList.Clear();
+            loadedSceneDict.Clear();
+        }
+        ///<inheritdoc/> 
+        public void OnTerminate()
         {
             loadSceneList.Clear();
             loadedSceneDict.Clear();

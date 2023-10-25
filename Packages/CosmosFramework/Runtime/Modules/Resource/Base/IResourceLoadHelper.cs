@@ -1,13 +1,17 @@
-﻿using System;
+﻿using Cosmos.Resource.State;
+using System;
 using UnityEngine;
 namespace Cosmos.Resource
 {
     /// <summary>
     ///资源加载适配接口
     /// </summary>
-    public interface IResourceLoadHelper : IDisposable
+    public interface IResourceLoadHelper
     {
-        
+        /// <summary>
+        /// 初始化；
+        /// </summary>
+        void OnInitialize();
         /// <summary>
         /// 加载资源（异步）；
         /// </summary>
@@ -93,11 +97,38 @@ namespace Cosmos.Resource
         /// </summary>
         /// <param name="assetBundleName">资源包名</param>
         /// <param name="unloadAllLoadedObjects">是否同时卸载所有实体对象</param>
-        void ReleaseAssetBundle(string assetBundleName, bool unloadAllLoadedObjects = false);
+        void UnloadAssetBundle(string assetBundleName, bool unloadAllLoadedObjects);
         /// <summary>
         /// 释放所有资源
         /// </summary>
         /// <param name="unloadAllLoadedObjects">是否同时卸载所有实体对象</param>
-        void ReleaseAllAsset(bool unloadAllLoadedObjects = false);
+        void UnloadAllAsset(bool unloadAllLoadedObjects);
+        /// <summary>
+        /// 获取bundle状态信息；
+        /// </summary>
+        /// <param name="bundleName">资源包名</param>
+        /// <param name="bundleState">资源包状态</param>
+        /// <returns>是否存在</returns>
+        bool GetBundleState(string bundleName, out ResourceBundleState bundleState);
+        /// <summary>
+        /// 获取object信息；
+        /// </summary>
+        /// <param name="objectName">资源对象名</param>
+        /// <param name="objectState">资源对象状态</param>
+        /// <returns>是否存在</returns>
+        bool GetObjectState(string objectName, out ResourceObjectState objectState);
+        /// <summary>
+        /// Get version of resource.
+        /// </summary>
+        /// <returns>resource version</returns>
+        ResourceVersion GetResourceVersion();
+        /// <summary>
+        /// 重置loader;
+        /// </summary>
+        void Reset();
+        /// <summary>
+        /// 被终结移除；
+        /// </summary>
+        void OnTerminate();
     }
 }

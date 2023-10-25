@@ -1,0 +1,68 @@
+﻿using UnityEditor;
+namespace Cosmos.Editor.Resource
+{
+    public struct ResourceBuildParams
+    {
+        /// <summary>
+        /// AB打包到的平台
+        /// </summary>
+        public BuildTarget BuildTarget;
+        /// <summary>
+        /// AB打包选项；
+        /// </summary>
+        public BuildAssetBundleOptions BuildAssetBundleOptions;
+        /// <summary>
+        /// AB包名称类型
+        /// </summary>
+        public AssetBundleNameType AssetBundleNameType;
+        /// <summary>
+        /// AB打包输出的绝对路径；
+        /// </summary>
+        public string AssetBundleBuildPath;
+        /// <summary>
+        /// AB打包输出文件夹
+        /// </summary>
+        public string AssetBundleBuildDirectory;
+        /// <summary>
+        /// 构建类型，增量或全量
+        /// </summary>
+        public ResourceBuildType ResourceBuildType;
+        /// <summary>
+        /// 打包的版本；
+        /// </summary>
+        public string BuildVersion;
+        /// <summary>
+        /// 内部版本号
+        /// </summary>
+        public int InternalBuildVersion;
+        /// <summary>
+        /// 加密manifest
+        /// </summary>
+        public bool EncryptManifest;
+        /// <summary>
+        /// Manifest加密密钥；
+        /// </summary>
+        public string ManifestEncryptionKey;
+        /// <summary>
+        /// AB偏移加密；
+        /// </summary>
+        public bool AssetBundleEncryption;
+        /// <summary>
+        /// AB偏移量；
+        /// </summary>
+        public int AssetBundleOffsetValue;
+        /// <summary>
+        /// 拷贝到streamingAsset文件；
+        /// </summary>
+        public bool CopyToStreamingAssets;
+        /// <summary>
+        /// 使用StreamingAsset相对路径；
+        /// </summary>
+        public bool UseStreamingAssetsRelativePath;
+        /// <summary>
+        /// 拷贝到的StreamingAssets相对路径；
+        /// </summary>
+        public string StreamingAssetsRelativePath;
+
+    }
+}
